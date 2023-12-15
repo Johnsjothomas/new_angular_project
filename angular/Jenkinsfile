@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        // Set environment variables if needed
-        NODEJS_HOME = '/usr/local/bin/node'
-        PATH = "${NODEJS_HOME}/bin:${PATH}"
+        // Customize the image name and tag
+        DOCKER_IMAGE = 'your-docker-registry/your-angular-app'
+        DOCKER_TAG = 'latest'
     }
 
     stages {
@@ -15,37 +15,32 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build Angular App') {
             steps {
-                // Install Node.js and npm
-                script {
-                    sh 'curl -sL https://deb.nodesource.com/setup_14.x | bash -'
-                    sh 'apt-get install -y nodejs'
+                // Use an official Node.js image to build the Angular app
+                container('node:14') {
+                    sh 'npm install'
+                    sh 'npm run build'
                 }
-
-                // Install Angular CLI and project dependencies
-                sh 'npm install'
             }
         }
 
-        stage('Build') {
+        stage('Build Docker Image') {
             steps {
-                // Build the Angular application
-                sh 'npm run build'
+                // Use Docker in this stage
+                script {
+                    // Build the Docker image with the Angular app artifacts
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                }
             }
         }
 
-        stage('Test') {
+        stage('Push Docker Image') {
             steps {
-                // Run tests if applicable
-                sh 'npm test'
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                // Deploy your Angular application (e.g., copy files to a web server)
-                // You may need additional steps based on your deployment strategy
+                // Push the Docker image to a registry (e.g., Docker Hub)
+                script {
+                    sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                }
             }
         }
     }
@@ -53,9 +48,11 @@ pipeline {
     post {
         success {
             // Add post-build actions if needed
+            echo 'Build and Docker image creation successful!'
         }
         failure {
             // Add actions to be executed if the build fails
+            echo 'Build and Docker image creation failed!'
         }
     }
 }
